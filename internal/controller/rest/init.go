@@ -10,6 +10,6 @@ type Params struct {
 	UserService port.UserService
 }
 
-func Init(params Params, router gin.RouterGroup) {
+func Init(params *Params, router *gin.RouterGroup) {
 	user.New(params.UserService).Route(router)
 }
