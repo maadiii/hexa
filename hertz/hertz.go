@@ -1,24 +1,26 @@
-package hexa
+package hertz
 
 import (
 	"context"
 	"crypto/rand"
-	"fmt"
 	"net/http"
 	"time"
 
 	"github.com/cloudwego/hertz/pkg/app"
 	"github.com/cloudwego/hertz/pkg/app/server"
+	"github.com/cloudwego/hertz/pkg/common/config"
 	"github.com/cloudwego/hertz/pkg/protocol"
+	"github.com/go-playground/validator/v10"
 	"github.com/hertz-contrib/cors"
 	"github.com/maadiii/gogate/pkg/errors"
+	"github.com/maadiii/hexa"
 	"go.uber.org/fx"
 )
 
-func NewHertz(lc fx.Lifecycle, cfg Config) *server.Hertz {
+func New(lc fx.Lifecycle, cfg Config, opts ...config.Option) *server.Hertz {
 	vd := newValidator()
-	s := server.Default(
-		server.WithHostPorts(fmt.Sprintf(":%d", cfg.Port)),
+	opts = append(
+		opts,
 		server.WithCustomValidatorFunc(func(r *protocol.Request, i any) error {
 			if err := vd.Validate(i); err != nil {
 				return errors.WrapCK(err, errors.CodeBadRequest, "validation error")
@@ -28,8 +30,10 @@ func NewHertz(lc fx.Lifecycle, cfg Config) *server.Hertz {
 		}),
 	)
 
-	addCorsToHertz(s, cfg.CORS)
-	s.Use(ErrorHandler(cfg.DevMode))
+	s := server.Default(opts...)
+
+	addCors(s, cfg.CORS)
+	s.Use(errors.ErrorHandler(cfg.DevMode))
 	s.HEAD("/health", func(_ context.Context, rc *app.RequestContext) {
 		rc.Status(http.StatusOK)
 	})
@@ -55,10 +59,10 @@ func NewHertz(lc fx.Lifecycle, cfg Config) *server.Hertz {
 
 func H[
 	IN any, OUT any,
-	SVC func(*Context, *IN) (*OUT, error),
+	SVC func(*hexa.Context, *IN) (*OUT, error),
 ](srv SVC, statusCode int) app.HandlerFunc {
 	return func(c context.Context, rc *app.RequestContext) {
-		req, err := hBind[IN](rc)
+		req, err := bind[IN](rc)
 		if err != nil {
 			return
 		}
@@ -74,12 +78,12 @@ func H[
 	}
 }
 
-func addCorsToHertz(s *server.Hertz, corsList []string) {
+func addCors(s *server.Hertz, corsList []string) {
 	s.Use(cors.New(cors.Config{
 		AllowOrigins:     corsList,
-		AllowMethods:     []string{"PUT", "PATCH", "GET", "POST", "DELETE", "HEAD", "OPTIONS"},
-		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization", "Token"},
-		ExposeHeaders:    []string{"Content-Length", "Request-Id"},
+		AllowMethods:     allowMethods,
+		AllowHeaders:     allowHeaders,
+		ExposeHeaders:    exposeHeaders,
 		AllowCredentials: true,
 		MaxAge:           12 * time.Hour, //nolint:mnd
 	}))
@@ -87,8 +91,8 @@ func addCorsToHertz(s *server.Hertz, corsList []string) {
 
 func callSvc[
 	IN any, OUT any,
-	SRV func(*Context, *IN) (*OUT, error),
-](ctx *Context, srv SRV, req *IN, rc *app.RequestContext) (*OUT, error) {
+	SRV func(*hexa.Context, *IN) (*OUT, error),
+](ctx *hexa.Context, srv SRV, req *IN, rc *app.RequestContext) (*OUT, error) {
 	out, err := srv(ctx, req)
 	if err != nil {
 		_ = rc.Error(err)
@@ -98,7 +102,7 @@ func callSvc[
 	return out, err
 }
 
-func hBind[T any](rc *app.RequestContext) (*T, error) {
+func bind[T any](rc *app.RequestContext) (*T, error) {
 	var body T
 
 	err := rc.BindAndValidate(&body)
@@ -112,23 +116,48 @@ func hBind[T any](rc *app.RequestContext) (*T, error) {
 	return &body, nil
 }
 
-func appContext(c context.Context, rc *app.RequestContext) *Context {
+func appContext(c context.Context, rc *app.RequestContext) *hexa.Context {
 	requsetID := rand.Text()
 	rc.Header("Request-Id", requsetID)
 
-	ctx := &Context{
+	ctx := &hexa.Context{
 		Context:   c,
 		RequestID: requsetID,
 	}
 
 	identity, _ := rc.Get(identityKey)
 	if identity != nil {
-		ctx.Identity = identity.(*Identity) //nolint
+		ctx.Identity = identity.(*hexa.Identity) //nolint
 	}
 
 	return ctx
 }
 
+type Config struct {
+	DevMode bool
+	CORS    []string
+}
+
+type Validator struct {
+	validator *validator.Validate
+}
+
+func newValidator() *Validator {
+	return &Validator{
+		validator: validator.New(),
+	}
+}
+
+func (v *Validator) Validate(i any) error {
+	return v.validator.Struct(i)
+}
+
 const (
 	identityKey = "identity"
+)
+
+var (
+	allowMethods  = []string{"PUT", "PATCH", "GET", "POST", "DELETE", "HEAD", "OPTIONS"}
+	allowHeaders  = []string{"Origin", "Content-Type", "Authorization", "Token"}
+	exposeHeaders = []string{"Content-Length", "Request-Id"}
 )

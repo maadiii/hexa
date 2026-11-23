@@ -1,4 +1,4 @@
-package hexa
+package errors
 
 import (
 	"context"
