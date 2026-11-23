@@ -34,10 +34,10 @@ func New(lc fx.Lifecycle, cfg Config, opts ...config.Option) *server.Hertz {
 
 	addCors(s, cfg.CORS)
 	s.Use(errors.ErrorHandler(cfg.DevMode))
-	s.HEAD("/health", func(_ context.Context, rc *app.RequestContext) {
+	s.HEAD("/healthz", func(_ context.Context, rc *app.RequestContext) {
 		rc.Status(http.StatusOK)
 	})
-	s.GET("/health", func(_ context.Context, rc *app.RequestContext) {
+	s.GET("/healthz", func(_ context.Context, rc *app.RequestContext) {
 		rc.Status(http.StatusOK)
 	})
 
