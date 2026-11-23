@@ -12,8 +12,8 @@ import (
 	"github.com/cloudwego/hertz/pkg/protocol"
 	"github.com/go-playground/validator/v10"
 	"github.com/hertz-contrib/cors"
-	"github.com/maadiii/gogate/pkg/errors"
 	"github.com/maadiii/hexa"
+	"github.com/maadiii/hexa/errors"
 	"go.uber.org/fx"
 )
 
