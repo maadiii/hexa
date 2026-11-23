@@ -44,7 +44,8 @@ func New(lc fx.Lifecycle, cfg Config, opts ...config.Option) *server.Hertz {
 	lc.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
 			go func() {
-				s.Spin()
+				// TODO: check the error respond from s.Run() and log it
+				_ = s.Run()
 			}()
 
 			return nil
