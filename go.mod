@@ -6,7 +6,6 @@ require (
 	github.com/cloudwego/hertz v0.10.6
 	github.com/go-playground/validator/v10 v10.30.6
 	github.com/hertz-contrib/cors v0.1.0
-	github.com/maadiii/gogate v0.0.2
 	github.com/pkg/errors v0.9.1
 	go.uber.org/fx v1.24.0
 )
