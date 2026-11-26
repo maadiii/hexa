@@ -15,9 +15,15 @@ import (
 	"github.com/maadiii/hexa"
 	"github.com/maadiii/hexa/errors"
 	"go.uber.org/fx"
+	"go.uber.org/zap"
 )
 
-func New(lc fx.Lifecycle, cfg Config, opts ...config.Option) *server.Hertz {
+func New(
+	lc fx.Lifecycle,
+	logger *zap.Logger,
+	cfg Config,
+	opts ...config.Option,
+) *server.Hertz {
 	vd := newValidator()
 	opts = append(
 		opts,
@@ -32,6 +38,15 @@ func New(lc fx.Lifecycle, cfg Config, opts ...config.Option) *server.Hertz {
 
 	s := server.Default(opts...)
 
+	s.Use(func(c context.Context, rc *app.RequestContext) {
+		ctx := &hexa.Context{
+			Context:   c,
+			Logger:    logger,
+			RequestID: setRequestId(rc),
+		}
+
+		rc.Next(ctx)
+	})
 	addCors(s, cfg.CORS)
 	s.Use(errors.ErrorHandler(cfg.DevMode))
 	s.HEAD("/healthz", func(_ context.Context, rc *app.RequestContext) {
@@ -63,12 +78,12 @@ func H[
 	SVC func(*hexa.Context, *IN) (*OUT, error),
 ](srv SVC, statusCode int) app.HandlerFunc {
 	return func(c context.Context, rc *app.RequestContext) {
+		ctx, _ := c.(*hexa.Context)
+
 		req, err := bind[IN](rc)
 		if err != nil {
 			return
 		}
-
-		ctx := appContext(c, rc)
 
 		out, err := callSvc(ctx, srv, req, rc)
 		if err != nil {
@@ -117,21 +132,14 @@ func bind[T any](rc *app.RequestContext) (*T, error) {
 	return &body, nil
 }
 
-func appContext(c context.Context, rc *app.RequestContext) *hexa.Context {
-	requsetID := rand.Text()
-	rc.Header("Request-Id", requsetID)
-
-	ctx := &hexa.Context{
-		Context:   c,
-		RequestID: requsetID,
+func setRequestId(rc *app.RequestContext) string {
+	reqId := string(rc.GetHeader("X-Request-Id"))
+	if len(reqId) == 0 {
+		reqId = rand.Text()
+		rc.Header("X-Request-Id", reqId)
 	}
 
-	identity, _ := rc.Get(identityKey)
-	if identity != nil {
-		ctx.Identity = identity.(*hexa.Identity) //nolint
-	}
-
-	return ctx
+	return reqId
 }
 
 type Config struct {
@@ -160,5 +168,5 @@ const (
 var (
 	allowMethods  = []string{"PUT", "PATCH", "GET", "POST", "DELETE", "HEAD", "OPTIONS"}
 	allowHeaders  = []string{"Origin", "Content-Type", "Authorization", "Token"}
-	exposeHeaders = []string{"Content-Length", "Request-Id"}
+	exposeHeaders = []string{"Content-Length", "X-Request-Id"}
 )

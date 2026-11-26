@@ -1,13 +1,18 @@
 package hexa
 
-import "context"
+import (
+	"context"
+
+	"go.uber.org/zap"
+)
 
 type Context struct {
 	context.Context
 
 	RequestID string
 
-	Identity *Identity
+	Identity Identity
+	Logger   *zap.Logger
 }
 
 type (
