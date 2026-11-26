@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/cloudwego/hertz/pkg/app"
@@ -14,14 +15,14 @@ import (
 	"github.com/hertz-contrib/cors"
 	"github.com/maadiii/hexa"
 	"github.com/maadiii/hexa/errors"
+	"github.com/maadiii/hexa/logging"
 	"go.uber.org/fx"
-	"go.uber.org/zap"
 )
 
 func New(
 	lc fx.Lifecycle,
-	logger *zap.Logger,
 	cfg Config,
+	logOpt logging.Options,
 	opts ...config.Option,
 ) *server.Hertz {
 	vd := newValidator()
@@ -37,6 +38,8 @@ func New(
 	)
 
 	s := server.Default(opts...)
+
+	logger := logging.New(os.Stdout, logOpt)
 
 	s.Use(func(c context.Context, rc *app.RequestContext) {
 		ctx := &hexa.Context{

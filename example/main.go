@@ -2,7 +2,6 @@ package main
 
 import (
 	"net/http"
-	"os"
 
 	"github.com/cloudwego/hertz/pkg/app/server"
 	"github.com/cloudwego/hertz/pkg/common/config"
@@ -16,14 +15,19 @@ import (
 
 func main() {
 	fx.New(
-		fx.Provide(func() *zap.Logger {
-			return logging.New(os.Stdout, logging.Options{
-				Service: "example-service",
-				Version: "0.0.1",
-				Level:   zap.DebugLevel,
-				Format:  "json",
-			})
-		}),
+		fx.Provide(
+			fx.Annotate(
+				func() logging.Options {
+					return logging.Options{
+						Service: "example-service",
+						Version: "0.0.1",
+						Level:   zap.DebugLevel,
+						Format:  "json",
+					}
+				},
+				fx.ResultTags(`name:"logOpt"`),
+			),
+		),
 		fx.WithLogger(func(log *zap.Logger) fxevent.Logger {
 			return &fxevent.ZapLogger{Logger: log}
 		}),
@@ -46,7 +50,7 @@ func main() {
 		fx.Provide(
 			fx.Annotate(
 				hertz.New,
-				fx.ParamTags(``, ``, ``, `name:"opts"`),
+				fx.ParamTags(``, ``, `name:"logOpt"`, `name:"opts"`),
 			),
 		),
 		fx.Invoke(func(h *server.Hertz) {
