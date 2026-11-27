@@ -48,20 +48,24 @@ func SimpleRequestId() app.HandlerFunc { //nolint
 		}
 
 		for i := range reqId {
-			c := reqId[i]
+			ch := reqId[i]
 
 			switch {
-			case c >= 'a' && c <= 'z':
-			case c >= 'A' && c <= 'Z':
-			case c >= '0' && c <= '9':
-			case c == '-' || c == '_':
+			case ch >= 'a' && ch <= 'z':
+			case ch >= 'A' && ch <= 'Z':
+			case ch >= '0' && ch <= '9':
+			case ch == '-' || ch == '_':
 			default:
-				rc.Header("X-Request-Id", string(reqId))
+				id := string(reqId)
+				rc.Header("X-Request-Id", id)
+				ctx, _ := c.(*hexa.Context)
+				ctx.RequestID = id
 				_ = rc.AbortWithError(http.StatusBadRequest, err)
 
 				return
 			}
 		}
+
 		id := string(reqId)
 		rc.Header("X-Request-Id", id)
 		ctx, _ := c.(*hexa.Context)
