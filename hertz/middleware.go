@@ -25,7 +25,7 @@ func SetContext() app.HandlerFunc {
 	}
 }
 
-func SimpleRequestIdHeaderHandler() app.HandlerFunc {
+func SimpleRequestId() app.HandlerFunc {
 	return func(c context.Context, rc *app.RequestContext) {
 		reqId := rc.GetHeader("X-Request-Id")
 

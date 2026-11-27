@@ -7,15 +7,13 @@ import (
 	"github.com/maadiii/hexa"
 )
 
+// To use this method must add SetContext func as first middleware to hertz server
 func H[
 	IN any, OUT any,
 	SVC func(*hexa.Context, *IN) (*OUT, error),
 ](srv SVC, statusCode int) app.HandlerFunc {
 	return func(c context.Context, rc *app.RequestContext) {
-		ctx, ok := c.(*hexa.Context)
-		if !ok {
-			ctx = &hexa.Context{Context: c}
-		}
+		ctx, _ := c.(*hexa.Context)
 
 		req, err := bind[IN](rc)
 		if err != nil {
