@@ -39,6 +39,8 @@ func SimpleRequestId() app.HandlerFunc {
 		if len(reqId) == 0 {
 			reqId := rand.Text()
 			rc.Header("X-Request-Id", reqId)
+			ctx, _ := c.(*hexa.Context)
+			ctx.RequestID = reqId
 
 			rc.Next(c)
 
@@ -57,8 +59,10 @@ func SimpleRequestId() app.HandlerFunc {
 
 		id := string(reqId)
 		rc.Header("X-Request-Id", id)
+		ctx, _ := c.(*hexa.Context)
+		ctx.RequestID = id
 
-		rc.Next(c)
+		rc.Next(ctx)
 	}
 }
 
@@ -85,6 +89,7 @@ func AccessLog(logger *zap.Logger) app.HandlerFunc {
 		status := rc.Response.StatusCode()
 		switch {
 		case status >= http.StatusInternalServerError:
+			fields = append(fields, zap.Error(rc.Errors[len(rc.Errors)-1].Unwrap()))
 			logger.Error("api call failed", fields...)
 		case status >= http.StatusBadRequest:
 			logger.Warn("api call rejected", fields...)

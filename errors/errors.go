@@ -64,6 +64,19 @@ func ErrorHandler(devMode bool) app.HandlerFunc {
 			return
 		}
 
+		err := rc.Errors[len(rc.Errors)-1]
+		var rrr *Error
+		if !As(err, &rrr) {
+			res := map[string]string{"KEY": internalKey}
+			if devMode {
+				res["VERBOSE"] = fmt.Sprintf("%+v", err.Err)
+			}
+
+			rc.AbortWithStatusJSON(http.StatusInternalServerError, res)
+
+			return
+		}
+
 		// The last coded error is the client's answer. Hooks earlier in the
 		// chain record why the request failed, and an OnError hook with an
 		// opinion about how to report it records one afterwards, so taking the
@@ -72,9 +85,9 @@ func ErrorHandler(devMode bool) app.HandlerFunc {
 		// they are bookkeeping about the error handling itself, and letting
 		// them win would hide the failure that actually brought us here.
 		appErr := lastCodedError(rc.Errors)
-		res := map[string]any{"key": appErr.key}
+		res := map[string]any{"KEY": appErr.key}
 		if devMode {
-			res["stack"] = fmt.Sprintf("%+v", appErr.error)
+			res["VERBOSE"] = fmt.Sprintf("%+v", appErr.error)
 		}
 
 		rc.AbortWithStatusJSON(StatusOf(appErr), res)
