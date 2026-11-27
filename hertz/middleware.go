@@ -25,7 +25,7 @@ func SetContext() app.HandlerFunc {
 	}
 }
 
-func SimpleRequestId() app.HandlerFunc {
+func SimpleRequestId() app.HandlerFunc { //nolint
 	return func(c context.Context, rc *app.RequestContext) {
 		reqId := rc.GetHeader("X-Request-Id")
 
@@ -47,16 +47,21 @@ func SimpleRequestId() app.HandlerFunc {
 			return
 		}
 
-		for _, c := range reqId {
-			if (c >= 'A' && c <= 'z') || (c >= '0' && c <= '9') || c == '-' || c == '_' {
-				continue
+		for i := range reqId {
+			c := reqId[i]
+
+			switch {
+			case c >= 'a' && c <= 'z':
+			case c >= 'A' && c <= 'Z':
+			case c >= '0' && c <= '9':
+			case c == '-' || c == '_':
+			default:
+				rc.Header("X-Request-Id", string(reqId))
+				_ = rc.AbortWithError(http.StatusBadRequest, err)
+
+				return
 			}
-
-			_ = rc.AbortWithError(http.StatusBadRequest, err)
-
-			return
 		}
-
 		id := string(reqId)
 		rc.Header("X-Request-Id", id)
 		ctx, _ := c.(*hexa.Context)
@@ -86,10 +91,10 @@ func AccessLog(logger *zap.Logger) app.HandlerFunc {
 			zap.String("client_ip", rc.ClientIP()),
 		}
 
+		fields = append(fields, zap.Error(rc.Errors[len(rc.Errors)-1].Unwrap()))
 		status := rc.Response.StatusCode()
 		switch {
 		case status >= http.StatusInternalServerError:
-			fields = append(fields, zap.Error(rc.Errors[len(rc.Errors)-1].Unwrap()))
 			logger.Error("api call failed", fields...)
 		case status >= http.StatusBadRequest:
 			logger.Warn("api call rejected", fields...)
