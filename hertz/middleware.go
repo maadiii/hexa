@@ -17,9 +17,9 @@ import (
 
 // SetContext use &hexa.Context{} as context.Context in all middleware and handler funcs if
 // be called at first server.Use as middleware.
-func SetContext() app.HandlerFunc {
+func SetContextWithLogger(logger *zap.Logger) app.HandlerFunc {
 	return func(c context.Context, rc *app.RequestContext) {
-		c = &hexa.Context{Context: c}
+		c = &hexa.Context{Context: c, Logger: logger}
 
 		rc.Next(c)
 	}
@@ -75,7 +75,7 @@ func SimpleRequestId() app.HandlerFunc { //nolint
 	}
 }
 
-func AccessLog(logger *zap.Logger) app.HandlerFunc {
+func AccessLog() app.HandlerFunc {
 	return func(c context.Context, rc *app.RequestContext) {
 		rc.Next(c)
 
@@ -99,9 +99,9 @@ func AccessLog(logger *zap.Logger) app.HandlerFunc {
 		status := rc.Response.StatusCode()
 		switch {
 		case status >= http.StatusInternalServerError:
-			logger.Error("api call failed", fields...)
+			ctx.Logger.Error("api call failed", fields...)
 		case status >= http.StatusBadRequest:
-			logger.Warn("api call rejected", fields...)
+			ctx.Logger.Warn("api call rejected", fields...)
 		}
 	}
 }
