@@ -10,7 +10,7 @@ import (
 // To use this method must add SetContext func as first middleware to hertz server
 func H[
 	IN any, OUT any,
-	SVC func(*hexa.Context, *IN) (*OUT, error),
+	SVC func(*hexa.Context, IN) (OUT, error),
 ](srv SVC, statusCode int) app.HandlerFunc {
 	return func(c context.Context, rc *app.RequestContext) {
 		ctx, _ := c.(*hexa.Context)
@@ -31,8 +31,8 @@ func H[
 
 func callSvc[
 	IN any, OUT any,
-	SRV func(*hexa.Context, *IN) (*OUT, error),
-](ctx *hexa.Context, srv SRV, req *IN, rc *app.RequestContext) (*OUT, error) {
+	SRV func(*hexa.Context, IN) (OUT, error),
+](ctx *hexa.Context, srv SRV, req IN, rc *app.RequestContext) (OUT, error) {
 	out, err := srv(ctx, req)
 	if err != nil {
 		_ = rc.Error(err)
@@ -42,7 +42,7 @@ func callSvc[
 	return out, err
 }
 
-func bind[T any](rc *app.RequestContext) (*T, error) {
+func bind[T any](rc *app.RequestContext) (T, error) {
 	var body T
 
 	err := rc.BindAndValidate(&body)
@@ -50,8 +50,8 @@ func bind[T any](rc *app.RequestContext) (*T, error) {
 		_ = rc.Error(err)
 		rc.Abort()
 
-		return nil, err
+		return body, err
 	}
 
-	return &body, nil
+	return body, nil
 }
